@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Magenta ↔ Grün · Text zuerst, Punkte am Schluss</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Bühne für die Farb-/Punktanimation -->
+  <div class="stage" aria-hidden="true"></div>
+
+  <!-- Text-Layer (immer exakt zentriert) -->
+  <main class="text" aria-live="polite">
+    <ul class="fragments" role="list">
+      <li>i am not my thoughts</li>
+      <li>I step out of meta-cognition</li>
+      <li>I turn to fearless openness</li>
+      <li>I find a sensory anchor</li>
+      <li>I return to mindful presence</li>
+    </ul>
+  </main>
+
+  <div class="hint">klicken/tippen: Pause/Weiter · Space: Weiter</div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

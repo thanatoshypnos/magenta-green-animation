@@ -1,0 +1,147 @@
+:root{
+  /* Kernfarben */
+  --magenta: #ff00ff;
+  --green:   #00ff00;
+
+  /* Zeiten */
+  --hold: 30s;        /* Punkt hält */
+  --grow: 12s;        /* Punkt wächst bis Vollfläche */
+  --settle: 2s;       /* kurze Ruhe danach */
+  --full: calc((var(--hold) + var(--grow) + var(--settle)) * 2);
+
+  /* Textzeiten */
+  --text-on: 3.2s;     /* Einblend-Zeit je Fragment */
+  --text-gap: 1.2s;    /* Blank zwischen Fragmenten */
+  --text-blur: 12px;   /* weiche Ein-/Ausblendung */
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--magenta); /* Start: voll Magenta */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif;
+}
+
+/* ===== Bühne: Punkt-/Flächenwechsel – OHNE Animation im Startzustand ===== */
+.stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--magenta);
+  will-change: background-color;
+}
+
+/* Radiale Ebenen für die Punkte – OHNE Animation, unsichtbar */
+.stage::before,
+.stage::after {
+  content:"";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  filter: blur(10px);  /* weicher Rand */
+  opacity: 0;          /* Start: unsichtbar */
+  transition: opacity .2s linear;
+}
+
+/* Definition der Gradients */
+.stage::before{
+  background-image: radial-gradient(circle, var(--green) 60%, rgba(0,0,0,0) 61%);
+}
+.stage::after{
+  background-image: radial-gradient(circle, var(--magenta) 60%, rgba(0,0,0,0) 61%);
+}
+
+/* ===== Wenn JS .run setzt: DANN laufen die Animationen genau 1x ===== */
+.stage.run {
+  animation: bgCycle var(--full) linear 1 both;
+}
+.stage.run::before{
+  animation: greenPhase var(--full) linear 1 both;
+  opacity: 1;
+}
+.stage.run::after{
+  animation: magentaPhase var(--full) linear 1 both;
+  opacity: 1;
+}
+
+/* ===== Text-Layer: exakt zentriert und invertiert zum Hintergrund ===== */
+.text {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;         /* exakte Zentrierung */
+  z-index: 10;                 /* Text sicher über der Bühne */
+  padding: 6vh 5vw;
+  text-align: center;
+  color: #fff;
+  mix-blend-mode: difference;  /* invertiert ggü. der Fläche */
+}
+
+.fragments{
+  list-style: none;
+  margin: 0; padding: 0;
+  min-height: 1em;
+  font-size: clamp(24px, 5vw, 64px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+
+.fragments li{
+  opacity: 0;
+  filter: blur(var(--text-blur));
+  transform: translate3d(0, 6px, 0);
+  transition: opacity .9s ease, filter .9s ease, transform .9s ease;
+  white-space: pre-wrap;
+  will-change: opacity, filter, transform;
+}
+.fragments li.show{
+  opacity: 1;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0);
+}
+
+/* ===== Keyframes für Farb-/Punktphasen ===== */
+@keyframes bgCycle{
+  0%     { background: var(--magenta); }
+  47.73% { background: var(--magenta); }
+  50%    { background: var(--green); }
+  97.73% { background: var(--green); }
+  100%   { background: var(--magenta); }
+}
+
+/* Grüner Punkt: erscheint klein, hält 30s, wächst bis Vollfläche, blendet aus */
+@keyframes greenPhase{
+  0%       { background-size: 10vmin 10vmin; opacity: 1; }
+  34.09%   { background-size: 10vmin 10vmin; opacity: 1; }   /* ~30s */
+  47.73%   { background-size: 220vmax 220vmax; opacity: 1; } /* wächst bis voll */
+  50%      { background-size: 220vmax 220vmax; opacity: 0; } /* Übergabe an Grünfläche */
+  100%     { background-size: 220vmax 220vmax; opacity: 0; }
+}
+
+/* Magenta Punkt: zweite Hälfte gespiegelt */
+@keyframes magentaPhase{
+  0%       { background-size: 220vmax 220vmax; opacity: 0; } /* aus in erster Hälfte */
+  50%      { background-size: 10vmin 10vmin; opacity: 1; }   /* erscheint klein ab 50% */
+  84.09%   { background-size: 10vmin 10vmin; opacity: 1; }   /* ~30s */
+  97.73%   { background-size: 220vmax 220vmax; opacity: 1; } /* wächst bis voll */
+  100%     { background-size: 220vmax 220vmax; opacity: 0; } /* Übergabe an Magentafläche */
+}
+
+/* Bewegungsreduktion */
+@media (prefers-reduced-motion: reduce){
+  .stage, .stage::before, .stage::after { animation: none !important; }
+  .text .fragments li { transition: none; filter: none; transform: none; }
+}
+
+/* Hinweis-Pill (optional) */
+.hint {
+  position: fixed; left: 12px; bottom: 12px;
+  font-size: 12px; line-height: 1; padding: 8px 10px;
+  background: rgba(255,255,255,0.16);
+  color: #fff; border-radius: 999px;
+  mix-blend-mode: difference;
+  user-select: none;
+}
