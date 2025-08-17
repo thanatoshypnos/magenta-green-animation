@@ -1,18 +1,17 @@
-/* Ablauf:
-   1) Zeige alle 5 Fragmente nacheinander (mit Blank-Zeiten dazwischen)
-   2) Blende den Text-Layer aus
-   3) Starte EINMAL die Punkt-/Farbsequenz
-   4) Am Ende: Text-Layer wieder ein → zurück zu Schritt 1 (Loop)
+/* Flow:
+   1) Show 5 text fragments (with magenta blanks between)
+   2) Hide text
+   3) Run dot/color sequence ONCE
+   4) Show text again → loop
 */
 (function(){
   const root = document.documentElement;
   const stage = document.querySelector('.stage');
   const textLayer = document.querySelector('.text');
   const items = Array.from(document.querySelectorAll('.fragments li'));
-
   if(!stage || !textLayer || !items.length) return;
 
-  // Zeiten aus CSS-Variablen
+  // Read timings from CSS variables
   const sec = v => parseFloat(v) || 0;
   const getVar = name => getComputedStyle(root).getPropertyValue(name);
   const onMs  = sec(getVar('--text-on')) * 1000 || 3200;
@@ -23,17 +22,19 @@
   let playing = true;
   let dotRunning = false;
   let dotTimer = null;
+  let i = -1;
 
-  // Sicherheit: Bühne im Ruhemodus starten
+  // Ensure resting state
   stage.classList.remove('run');
   textLayer.style.visibility = 'visible';
 
-  // Click toggelt Pause/Weiter für den TEXT-Teil
+  // Pause/resume text with click
   document.addEventListener('click', ()=>{
     playing = !playing;
     if(playing && !dotRunning) runTextSequence();
   });
 
+  // Space resumes
   document.addEventListener('keydown', e=>{
     if(e.code === 'Space'){
       e.preventDefault();
@@ -44,23 +45,38 @@
     }
   });
 
-  // TEXT-SEQUENZ EINMAL DURCHSPIELEN
+  // Text sequence
   async function runTextSequence(){
-    // kleine Anfangs-Blank-Phase
-    await sleep(600);
+    await sleep(600); // initial blank
 
-    for(let i=0; i<items.length; i++){
+    for(let step=0; step<items.length; step++){
       if(!playing) await waitUntilPlaying();
 
-      const el = items[i];
-      el.classList.add('show');          // einblenden
+      // hide previous with slower fade-out
+      if(i >= 0){
+        items[i].classList.add('hiding');
+        items[i].classList.remove('show');
+      }
+
+      // next
+      i = (i + 1) % items.length;
+
+      // show current (fast fade-in)
+      requestAnimationFrame(()=>{
+        items[i].classList.remove('hiding');
+        items[i].classList.add('show');
+      });
+
+      // visible duration
       await sleep(onMs);
 
-      el.classList.remove('show');       // ausblenden
-      await sleep(gapMs);                // Blank (magenta)
+      // start fade-out and wait for blank
+      items[i].classList.add('hiding');
+      items[i].classList.remove('show');
+      await sleep(gapMs);
     }
 
-    // Nach allen Fragmenten → Punkte laufen lassen
+    // After all fragments → dots
     startDotSequence();
   }
 
@@ -68,21 +84,20 @@
     if(dotRunning) return;
     dotRunning = true;
 
-    // Text ausblenden, damit die Fläche pur wirkt
+    // Hide text for the color show
     textLayer.style.visibility = 'hidden';
 
-    // Bühne starten
+    // Kick animations
     stage.classList.add('run');
 
-    // Fallback-Timer, falls 'animationend' nicht feuert
-    dotTimer = setTimeout(onDotSequenceDone, fullAnimMs + 100);
+    // Fallback timer in case animationend doesn't fire
+    dotTimer = setTimeout(onDotSequenceDone, fullAnimMs + 200);
 
-    // Wenn die Hintergrund-Animation fertig ist, resetten wir
+    // Listen for the bg animation end
     stage.addEventListener('animationend', onBgDone, { once: true });
   }
 
   function onBgDone(e){
-    // Wir lauschen auf die Stage-Animation 'bgCycle'
     if(e && e.animationName !== 'bgCycle') return;
     onDotSequenceDone();
   }
@@ -92,17 +107,15 @@
     dotRunning = false;
     if(dotTimer){ clearTimeout(dotTimer); dotTimer = null; }
 
-    // Bühne stoppen/zurücksetzen
+    // Reset stage
     stage.classList.remove('run');
 
-    // Text wieder sichtbar
+    // Show text again and loop
     textLayer.style.visibility = 'visible';
-
-    // Loop: von vorn mit den Texten (sofern nicht pausiert)
     if(playing) runTextSequence();
   }
 
-  // Utilities
+  // Helpers
   function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
   function waitUntilPlaying(){
     return new Promise(resolve=>{
