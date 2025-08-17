@@ -1,28 +1,28 @@
 :root{
-  /* Kernfarben */
+  /* Core colors */
   --magenta: #ff00ff;
   --green:   #00ff00;
 
-  /* Zeiten */
-  --hold: 30s;        /* Punkt hält */
-  --grow: 12s;        /* Punkt wächst bis Vollfläche */
-  --settle: 2s;       /* kurze Ruhe danach */
-  --full: calc((var(--hold) + var(--grow) + var(--settle)) * 2);
+  /* Durations */
+  --hold: 30s;        /* dot holds */
+  --grow: 12s;        /* dot grows to fill */
+  --settle: 2s;       /* brief calm after fill */
+  --full: calc((var(--hold) + var(--grow) + var(--settle)) * 2); /* whole cycle */
 
-  /* Textzeiten */
-  --text-on: 3.2s;     /* Einblend-Zeit je Fragment */
-  --text-gap: 1.2s;    /* Blank zwischen Fragmenten */
-  --text-blur: 12px;   /* weiche Ein-/Ausblendung */
+  /* Text timings */
+  --text-on: 3.2s;    /* visible time per fragment */
+  --text-gap: 1.2s;   /* blank magenta time between fragments */
+  --text-blur: 12px;  /* soft fade */
 }
 
 html, body {
   height: 100%;
   margin: 0;
-  background: var(--magenta); /* Start: voll Magenta */
+  background: var(--magenta); /* start: full magenta */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif;
 }
 
-/* ===== Bühne: Punkt-/Flächenwechsel – OHNE Animation im Startzustand ===== */
+/* ===== Stage: NO animation at rest ===== */
 .stage {
   position: fixed;
   inset: 0;
@@ -31,7 +31,19 @@ html, body {
   will-change: background-color;
 }
 
-/* Radiale Ebenen für die Punkte – OHNE Animation, unsichtbar */
+/* Helper div for the handoff pop of green */
+.handoff {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-image: radial-gradient(circle, var(--green) 60%, rgba(0,0,0,0) 61%);
+  filter: blur(10px);
+  opacity: 0; /* off by default */
+}
+
+/* Radial layers for main dots (pseudo-elements) — at rest, invisible */
 .stage::before,
 .stage::after {
   content:"";
@@ -40,20 +52,16 @@ html, body {
   pointer-events: none;
   background-repeat: no-repeat;
   background-position: 50% 50%;
-  filter: blur(10px);  /* weicher Rand */
-  opacity: 0;          /* Start: unsichtbar */
+  filter: blur(10px);  /* soft edge */
+  opacity: 0;          /* hidden until run */
   transition: opacity .2s linear;
 }
 
-/* Definition der Gradients */
-.stage::before{
-  background-image: radial-gradient(circle, var(--green) 60%, rgba(0,0,0,0) 61%);
-}
-.stage::after{
-  background-image: radial-gradient(circle, var(--magenta) 60%, rgba(0,0,0,0) 61%);
-}
+/* Gradient definitions */
+.stage::before{ background-image: radial-gradient(circle, var(--green)   60%, rgba(0,0,0,0) 61%); }
+.stage::after { background-image: radial-gradient(circle, var(--magenta) 60%, rgba(0,0,0,0) 61%); }
 
-/* ===== Wenn JS .run setzt: DANN laufen die Animationen genau 1x ===== */
+/* ===== When JS adds .run: play everything exactly once ===== */
 .stage.run {
   animation: bgCycle var(--full) linear 1 both;
 }
@@ -65,45 +73,69 @@ html, body {
   animation: magentaPhase var(--full) linear 1 both;
   opacity: 1;
 }
+.stage.run .handoff{
+  animation: handoffPhase var(--full) linear 1 both; /* second green dot near handover */
+}
 
-/* ===== Text-Layer: exakt zentriert und invertiert zum Hintergrund ===== */
+/* ===== Text layer: perfectly centered & color-inverted ===== */
 .text {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;         /* exakte Zentrierung */
-  z-index: 10;                 /* Text sicher über der Bühne */
+  z-index: 10;                 /* text on top */
+  display: flex;
+  align-items: center;         /* vertical center */
+  justify-content: center;     /* horizontal center */
   padding: 6vh 5vw;
   text-align: center;
   color: #fff;
-  mix-blend-mode: difference;  /* invertiert ggü. der Fläche */
+  mix-blend-mode: difference;  /* invert vs background */
 }
 
-.fragments{
+/* Container for fragments */
+.fragments {
+  position: relative;
   list-style: none;
-  margin: 0; padding: 0;
-  min-height: 1em;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* Each fragment absolutely centered */
+.fragments li{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translate3d(0, 6px, 0);
+
+  /* Shorter fade-in, softened with blur */
+  opacity: 0;
+  filter: blur(var(--text-blur));
+  transition:
+    opacity .55s ease-out,
+    filter  .55s ease-out,
+    transform .55s ease-out;
+
+  white-space: pre-wrap;
   font-size: clamp(24px, 5vw, 64px);
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1.15;
-}
-
-.fragments li{
-  opacity: 0;
-  filter: blur(var(--text-blur));
-  transform: translate3d(0, 6px, 0);
-  transition: opacity .9s ease, filter .9s ease, transform .9s ease;
-  white-space: pre-wrap;
   will-change: opacity, filter, transform;
 }
 .fragments li.show{
   opacity: 1;
   filter: blur(0);
-  transform: translate3d(0, 0, 0);
+  transform: translate(-50%, -50%) translate3d(0, 0, 0);
+}
+/* Slower fade-out when hiding */
+.fragments li.hiding{
+  transition-duration: 1.1s;
+  transition-timing-function: ease-in;
 }
 
-/* ===== Keyframes für Farb-/Punktphasen ===== */
+/* ===== Keyframes ===== */
+
+/* Background color handover */
 @keyframes bgCycle{
   0%     { background: var(--magenta); }
   47.73% { background: var(--magenta); }
@@ -112,31 +144,51 @@ html, body {
   100%   { background: var(--magenta); }
 }
 
-/* Grüner Punkt: erscheint klein, hält 30s, wächst bis Vollfläche, blendet aus */
+/* Percent helpers relative to full cycle (88s):
+   3s  ≈ 3.41%    9s ≈ 10.23%
+   Hold end (30s) = 34.09%
+   Grow end (42s) = 47.73%
+*/
+
+/* GREEN dot — fade-in 3s, hold, grow, fade-out 9s ending at 50% */
 @keyframes greenPhase{
-  0%       { background-size: 10vmin 10vmin; opacity: 1; }
-  34.09%   { background-size: 10vmin 10vmin; opacity: 1; }   /* ~30s */
-  47.73%   { background-size: 220vmax 220vmax; opacity: 1; } /* wächst bis voll */
-  50%      { background-size: 220vmax 220vmax; opacity: 0; } /* Übergabe an Grünfläche */
-  100%     { background-size: 220vmax 220vmax; opacity: 0; }
+  0%        { background-size: 10vmin 10vmin; opacity: 0; }        /* start invisible */
+  3.41%     { background-size: 10vmin 10vmin; opacity: 1; }        /* fade-in done (~3s) */
+  34.09%    { background-size: 10vmin 10vmin; opacity: 1; }        /* hold (~30s) */
+  47.73%    { background-size: 220vmax 220vmax; opacity: 1; }      /* grow (~12s) */
+  39.77%    { opacity: 1; }                                        /* start 9s fade-out */
+  50%       { background-size: 220vmax 220vmax; opacity: 0; }      /* fade-out ends */
+  100%      { background-size: 220vmax 220vmax; opacity: 0; }
 }
 
-/* Magenta Punkt: zweite Hälfte gespiegelt */
+/* Handoff second green dot — appears just before 50% and expands */
+@keyframes handoffPhase{
+  0%        { background-size: 0 0;     opacity: 0; }
+  44%       { background-size: 0 0;     opacity: 0; }     /* idle */
+  45%       { background-size: 6vmin 6vmin; opacity: 1; } /* pop in near center */
+  50%       { background-size: 220vmax 220vmax; opacity: 1; } /* fills as we switch to green */
+  51%       { opacity: 0; }                                   /* hide after handover */
+  100%      { opacity: 0; }
+}
+
+/* MAGENTA dot — mirror in second half (3s in, 9s out to 100%) */
 @keyframes magentaPhase{
-  0%       { background-size: 220vmax 220vmax; opacity: 0; } /* aus in erster Hälfte */
-  50%      { background-size: 10vmin 10vmin; opacity: 1; }   /* erscheint klein ab 50% */
-  84.09%   { background-size: 10vmin 10vmin; opacity: 1; }   /* ~30s */
-  97.73%   { background-size: 220vmax 220vmax; opacity: 1; } /* wächst bis voll */
-  100%     { background-size: 220vmax 220vmax; opacity: 0; } /* Übergabe an Magentafläche */
+  0%        { background-size: 220vmax 220vmax; opacity: 0; }      /* off in first half */
+  50%       { background-size: 10vmin 10vmin;  opacity: 0; }       /* appears at midpoint */
+  53.41%    { background-size: 10vmin 10vmin;  opacity: 1; }       /* fade-in done (~3s) */
+  84.09%    { background-size: 10vmin 10vmin;  opacity: 1; }       /* hold (~30s) */
+  97.73%    { background-size: 220vmax 220vmax; opacity: 1; }      /* grow (~12s) */
+  89.77%    { opacity: 1; }                                        /* start 9s fade-out */
+  100%      { background-size: 220vmax 220vmax; opacity: 0; }      /* fade-out ends */
 }
 
-/* Bewegungsreduktion */
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce){
-  .stage, .stage::before, .stage::after { animation: none !important; }
-  .text .fragments li { transition: none; filter: none; transform: none; }
+  .stage, .stage::before, .stage::after, .handoff { animation: none !important; }
+  .text .fragments li { transition: none; filter: none; transform: translate(-50%, -50%); }
 }
 
-/* Hinweis-Pill (optional) */
+/* Optional hint pill */
 .hint {
   position: fixed; left: 12px; bottom: 12px;
   font-size: 12px; line-height: 1; padding: 8px 10px;
