@@ -1,16 +1,19 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Magenta ↔ Grün · Text zuerst, Punkte am Schluss</title>
+  <title>Magenta ↔ Green · Text first, dots at the end</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Bühne für die Farb-/Punktanimation -->
-  <div class="stage" aria-hidden="true"></div>
+  <!-- Stage for color/dot animation -->
+  <div class="stage" aria-hidden="true">
+    <!-- Hand-off helper dot (appears shortly before full green) -->
+    <div class="handoff" aria-hidden="true"></div>
+  </div>
 
-  <!-- Text-Layer (immer exakt zentriert) -->
+  <!-- Centered text layer -->
   <main class="text" aria-live="polite">
     <ul class="fragments" role="list">
       <li>i am not my thoughts</li>
@@ -21,7 +24,7 @@
     </ul>
   </main>
 
-  <div class="hint">klicken/tippen: Pause/Weiter · Space: Weiter</div>
+  <div class="hint">tap/click: pause · space: resume</div>
 
   <script src="script.js" defer></script>
 </body>
